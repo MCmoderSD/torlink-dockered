@@ -8,8 +8,15 @@ APP_DIR="${TORLINK_APP_DIR:-/app}"
 WANT_VERSION="${TORLINK_VERSION:-latest}"
 AUTO_UPDATE="${TORLINK_AUTO_UPDATE:-1}"
 CONFIG_FILE="$CONFIG_DIR/config/config.json"
+SCREEN_DIR="${SCREENDIR:-/tmp/screen}"
 
 log() { echo "[torlink] $*"; }
+
+has_session() {
+    screen -ls 2>/dev/null \
+        | sed -n "s/^[[:space:]]*\([0-9][0-9]*\)\.$SESSION[[:space:]].*/\1/p" \
+        | grep -q .
+}
 
 installed_version() {
     node -p "require('$APP_DIR/node_modules/torlnk/package.json').version" 2>/dev/null || true
@@ -42,6 +49,8 @@ update_torlnk() {
 }
 
 mkdir -p "$CONFIG_DIR/config" "$CONFIG_DIR/data" "$CONFIG_DIR/home" "$APP_DIR" "$DOWNLOAD_DIR"
+mkdir -p "$SCREEN_DIR"
+chmod 700 "$SCREEN_DIR"
 
 if [ "$AUTO_UPDATE" != "0" ]; then
     update_torlnk
@@ -60,16 +69,15 @@ if [ ! -f "$CONFIG_FILE" ]; then
 fi
 
 shutdown() {
-    pane_pid=$(tmux list-panes -t "$SESSION" -F '#{pane_pid}' 2>/dev/null | head -n 1 || true)
-    if [ -n "${pane_pid:-}" ]; then
-        kill -TERM "$pane_pid" 2>/dev/null || true
+    if has_session; then
+        screen -S "$SESSION" -X stuff "$(printf '\003')" >/dev/null 2>&1 || true
         i=0
-        while [ "$i" -lt 5 ] && tmux has-session -t "$SESSION" 2>/dev/null; do
+        while [ "$i" -lt 5 ] && has_session; do
             sleep 1
             i=$((i + 1))
         done
     fi
-    tmux kill-session -t "$SESSION" 2>/dev/null || true
+    screen -S "$SESSION" -X quit >/dev/null 2>&1 || true
     exit 0
 }
 trap shutdown TERM INT
@@ -79,10 +87,17 @@ if [ "${1:-}" = "run-once" ]; then
     exec torlnk "$@"
 fi
 
-log "starting torlnk $(installed_version) - attach with: docker compose exec torlink-dockered torlnk attach"
-tmux new-session -d -s "$SESSION" torlnk
+log "starting torlnk $(installed_version) - attach with: docker compose exec torlink-dockered screen -U -x $SESSION"
+screen -U -dmS "$SESSION" torlnk
 
-while tmux has-session -t "$SESSION" 2>/dev/null; do
+i=0
+while [ "$i" -lt 10 ] && ! has_session; do
+    sleep 1 &
+    wait $!
+    i=$((i + 1))
+done
+
+while has_session; do
     sleep 2 &
     wait $!
 done
