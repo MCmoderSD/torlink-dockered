@@ -46,7 +46,7 @@ After that, `torlink` behaves like a locally installed `torlnk`:
 torlink
 ```
 
-The script resolves symlinks back to its own directory, so it always finds the `docker-compose.yaml` next to it, no matter where you call it from. It works with both `docker compose` and the older `docker-compose`.
+The script resolves symlinks back to its own directory, so it always finds the `docker-compose.yaml` next to it, no matter where you call it from. It works with the `docker compose` plugin and with the standalone `docker-compose` v2 binary. Compose v1 is not supported: the compose file uses Compose-spec features (top-level `name:`, `pull_policy:`) that v1 cannot parse.
 
 Torrents are added from inside the TUI after attaching. Everything except `attach` starts a *second* `torlnk` process in the container, sharing the same config and download directory — fine for one-shots like `help` or `version`, but not a way to talk to the running engine.
 
