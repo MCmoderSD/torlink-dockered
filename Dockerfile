@@ -1,7 +1,7 @@
 FROM node:slim
 
 RUN apt update && apt install -y --no-install-recommends \
-        tmux ca-certificates \
+        screen ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 ARG WITH_BUILD_TOOLS=0
@@ -28,6 +28,9 @@ ENV TORLINK_DOWNLOAD_DIR=/downloads \
     TORLINK_APP_DIR=/app \
     HOME=/config/home \
     TERM=xterm-256color \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    SCREENDIR=/tmp/screen \
     npm_config_cache=/config/npm-cache
 
 ENV TORLINK_VERSION=latest

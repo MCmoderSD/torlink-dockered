@@ -12,6 +12,7 @@ done
 cd "$(dirname "$SELF")"
 
 SERVICE=torlink-dockered
+SESSION=torlink
 
 if docker compose version >/dev/null 2>&1; then
     dc() { docker compose "$@"; }
@@ -31,11 +32,9 @@ if [ -z "$(dc ps --status running -q "$SERVICE" 2>/dev/null)" ]; then
     fi
 fi
 
-if [ "$#" -eq 0 ]; then
-    set -- attach
-fi
-
-if [ -t 0 ]; then
+if [ "$#" -eq 0 ] || { [ "$#" -eq 1 ] && [ "$1" = "attach" ]; }; then
+    dc exec "$SERVICE" screen -U -x "$SESSION"
+elif [ -t 0 ]; then
     dc exec "$SERVICE" torlnk "$@"
 else
     dc exec -T "$SERVICE" torlnk "$@"

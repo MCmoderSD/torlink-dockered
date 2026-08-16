@@ -16,7 +16,7 @@ cd torlink-dockered && docker compose up -d
 ./torlink.sh
 ```
 
-The last command attaches you to the running client. Detach again with `Ctrl-b` then `d` — the container keeps seeding and downloading in the background.
+The last command attaches you to the running client. Detach again with `Ctrl-a` then `d` — the container keeps seeding and downloading in the background.
 
 Stop everything with:
 
@@ -48,7 +48,7 @@ torlink
 
 The script resolves symlinks back to its own directory, so it always finds the `docker-compose.yaml` next to it, no matter where you call it from. It works with the `docker compose` plugin and with the standalone `docker-compose` v2 binary. Compose v1 is not supported: the compose file uses Compose-spec features (top-level `name:`, `pull_policy:`) that v1 cannot parse.
 
-Torrents are added from inside the TUI after attaching. Everything except `attach` starts a *second* `torlnk` process in the container, sharing the same config and download directory — fine for one-shots like `help` or `version`, but not a way to talk to the running engine.
+Torrents are added from inside the TUI after attaching. Every other argument starts a *second* `torlnk` process in the container, sharing the same config and download directory — fine for one-shots like `help` or `version`, but not a way to talk to the running engine.
 
 `torlnk` also has headless modes (`watch <dir>`, `serve` on `:9161`, `files` on `:9160`). They are not wired up here: the container already runs the TUI, and no ports are published. Using them means publishing the port in `docker-compose.yaml` and running that mode as the container's command instead.
 
@@ -60,10 +60,18 @@ The container has no daemon. torlink's TUI process *is* the engine, so it has to
 
 1. The entrypoint installs `torlnk` from npm into the `/app` volume.
 2. It seeds `/config/config/config.json` on first start, pointing the download directory at `/downloads`.
-3. It starts `torlnk` inside a detached tmux session named `torlink`.
+3. It starts `torlnk` inside a detached GNU screen session named `torlink`.
 4. It waits for that session. When the session ends, the container exits.
 
-`torlnk attach` inside the container is exactly `tmux new-session -A -s torlink`, so attaching from the host joins the same session that is doing the work.
+Attaching from the host joins that exact session:
+
+```bash
+docker compose exec torlink-dockered screen -U -x torlink
+```
+
+`torlnk attach` is *not* used for this. Upstream hardcodes it to `tmux new-session -A -s torlink`, and the image ships screen instead of tmux, so the subcommand cannot work here — `torlink.sh` translates a bare call (and `torlink attach`) into the screen command above.
+
+The session and every attach run with `screen -U`, and the image sets `LANG`/`LC_ALL` to `C.UTF-8`. Without a UTF-8 locale a multiplexer downgrades the TUI's box-drawing and block glyphs to ASCII, which is what makes the interface look broken.
 
 ## Updating
 
@@ -107,7 +115,7 @@ The path inside the container must stay `/downloads`, otherwise the seeded confi
 
 - read-only root filesystem, writes only into the volumes and a tmpfs `/tmp`
 - runs as `1000:1000`, never as root
-- `init: true`, so the reparented tmux server gets reaped properly
+- `init: true`, so the reparented screen server gets reaped properly
 - no ports published to the host; the client only makes outbound connections
 - the client, its Node runtime and every downloaded file stay inside the container
 
