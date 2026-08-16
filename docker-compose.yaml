@@ -1,0 +1,39 @@
+name: torlink-dockered
+
+services:
+  torlink-dockered:
+    image: mcmodersd/torlink-dockered:latest
+    container_name: torlink-dockered
+    hostname: torlink-dockered
+    pull_policy: always
+    restart: on-failure
+    user: "1000:1000"
+    read_only: true
+    init: true
+
+    environment:
+      TERM: xterm-256color
+      TORLINK_VERSION: latest
+
+    volumes:
+      - downloads:/downloads
+      - config:/config
+      - app:/app
+
+    tmpfs:
+      - /tmp:mode=1777
+
+    networks:
+      - torlink-network
+
+volumes:
+  downloads:
+    name: torlink-downloads
+  config:
+    name: torlink-config
+  app:
+    name: torlink-app
+
+networks:
+  torlink-network:
+    name: torlink-network
